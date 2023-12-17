@@ -1,13 +1,13 @@
-import 'dart:convert';
-import 'dart:io';
+import "dart:convert";
+import "dart:io";
 
-import 'package:drift/drift.dart';
-import 'package:riverpod/riverpod.dart';
-import 'package:translation_gen/data/database.dart';
-import 'package:translation_gen/service/files_service.dart';
-import 'package:translation_gen/service/logger_service.dart';
-import 'package:translation_gen/service/open_ai_service.dart';
-import 'package:translation_gen/string_extension.dart';
+import "package:drift/drift.dart";
+import "package:riverpod/riverpod.dart";
+import "package:translation_gen/data/database.dart";
+import "package:translation_gen/service/files_service.dart";
+import "package:translation_gen/service/logger_service.dart";
+import "package:translation_gen/service/open_ai_service.dart";
+import "package:translation_gen/string_extension.dart";
 
 class AppSetupService {
   late Database appDatabase;
@@ -28,7 +28,7 @@ class AppSetupService {
     required String language,
     required List<String> entries,
   }) async {
-    _loggerService.info('Setting up App...');
+    _loggerService.info("Setting up App...");
 
     final app = await appDatabase.getAppByName(appName).getSingleOrNull();
     if (app != null) {
@@ -47,9 +47,9 @@ class AppSetupService {
       if (appGenerated == null) {
         await _setupFiles(appName: appName);
         await appDatabase.setAppGenerated(appName);
-        _loggerService.info('App Setup Done');
+        _loggerService.info("App Setup Done");
       } else {
-        _loggerService.info('App Already Setup, aborting...');
+        _loggerService.info("App Already Setup, aborting...");
       }
       return langCode;
     } else {
@@ -62,13 +62,13 @@ class AppSetupService {
 
   _setUpApp(String appName) async {
     try {
-      _loggerService.info('Setting up App...');
+      _loggerService.info("Setting up App...");
       await appDatabase.apps.insertOne(
         App(name: appName, version: 1, appGenerated: 0),
         mode: InsertMode.insertOrAbort,
       );
     } catch (e) {
-      _loggerService.info('App Exist, aborting...\nusing existing App');
+      _loggerService.info("App Exist, aborting...\nusing existing App");
     }
   }
 
@@ -76,17 +76,17 @@ class AppSetupService {
     List<String> entries,
     String appName,
     String languageTo, {
-    String languageFrom = 'english',
+    String languageFrom = "english",
   }) async {
     try {
       final app = await appDatabase.getAppByName(appName).getSingleOrNull();
       if (app != null) {
-        print('Setting Up all Sentence Entries...');
+        print("Setting Up all Sentence Entries...");
         await appDatabase.entries.insertAll(
           entries.map(
             (e) => SentenceEntry(
               entryId:
-                  '${e.toTranslateKey()}_${appName}_${languageFrom}_$languageTo',
+                  "${e.toTranslateKey()}_${appName}_${languageFrom}_$languageTo",
               entryKey: e.toTranslateKey(),
               entryTranslationFrom: e,
               appName: appName,
@@ -98,7 +98,7 @@ class AppSetupService {
           mode: InsertMode.insertOrIgnore,
         );
       } else {
-        print('App not found, creating...');
+        print("App not found, creating...");
         await _setUpApp(appName);
         await _setupEntries(entries, appName, languageTo);
       }
@@ -109,22 +109,22 @@ class AppSetupService {
 
   Future<String> _setUpLanguages(
       {required String appName, required String language}) async {
-    String languageCode = '';
+    String languageCode = "";
     try {
       final globalLanguage = await appDatabase
           .getLanguageFromGlobalIndex(language)
           .getSingleOrNull();
       if (globalLanguage == null) {
         final languageCodeRes = await _openAiService.getLanguageCode(language);
-        languageCode = languageCodeRes.split('-')[0].trim().replaceAll(' ', '');
-        print('CODE $languageCode');
+        languageCode = languageCodeRes.split("-")[0].trim().replaceAll(" ", "");
+        print("CODE $languageCode");
 
         await appDatabase.globalLanguages.insertOne(
           GlobalLanguage(language: language, code: languageCode),
           mode: InsertMode.insertOrIgnore,
         );
         _loggerService
-            .info('Added new language [$language] to global languages');
+            .info("Added new language [$language] to global languages");
         final app = await appDatabase.getAppByName(appName).getSingleOrNull();
         if (app != null) {
           await appDatabase.appLanguages.insertOne(
@@ -135,7 +135,7 @@ class AppSetupService {
             ),
             mode: InsertMode.insertOrIgnore,
           );
-          _loggerService.info('Added new language [$language] to App $appName');
+          _loggerService.info("Added new language [$language] to App $appName");
         }
       } else {
         final app = await appDatabase.getAppByName(appName).getSingleOrNull();
@@ -148,14 +148,14 @@ class AppSetupService {
             ),
             mode: InsertMode.insertOrIgnore,
           );
-          _loggerService.info('Added new language [$language] to App $appName');
+          _loggerService.info("Added new language [$language] to App $appName");
         }
       }
       return languageCode.isNotEmpty
           ? languageCode
           : globalLanguage?.code ?? languageCode;
     } catch (e) {
-      _loggerService.error('Failed to setup languages', e);
+      _loggerService.error("Failed to setup languages", e);
       rethrow;
     }
   }
@@ -196,7 +196,7 @@ class AppSetupService {
       if (!isEnglishFileSet) {
         final String englishFilePath =
             _filesService.createFileIfNotExists(appName: appName);
-        await _setupFile(filePath: englishFilePath, locale: 'en');
+        await _setupFile(filePath: englishFilePath, locale: "en");
       }
 
       for (var appLanguage in appLanguages) {
@@ -211,7 +211,7 @@ class AppSetupService {
           );
           await _setupFile(
               filePath: translatedFilePath, locale: appLanguage.languageCode);
-          print('settig up ${appLanguage.languageCode} file');
+          print("settig up ${appLanguage.languageCode} file");
         }
       }
     } catch (e, t) {
@@ -219,7 +219,7 @@ class AppSetupService {
     }
   }
 
-  _setupFile({required String filePath, String locale = 'en'}) async {
+  _setupFile({required String filePath, String locale = "en"}) async {
     try {
       final File file = File(filePath);
       final valueTemplate = {"@@locale": locale};
@@ -235,9 +235,9 @@ class AppSetupService {
       await appDatabase.cleanAppLanguages(appName);
       await appDatabase.unsetAppGenerated(appName);
       _loggerService
-          .info('Cleaned [$appName] App all entries and languages are deleted');
+          .info("Cleaned [$appName] App all entries and languages are deleted");
     } catch (e) {
-      _loggerService.error('Failed to Clean [$appName] App', e);
+      _loggerService.error("Failed to Clean [$appName] App", e);
     }
   }
 
@@ -245,9 +245,9 @@ class AppSetupService {
     try {
       await appDatabase.resetAppSentenceEntries(appName);
       _loggerService.info(
-          'Resete All entries in [$appName] to default value (entry_generated:0) = false');
+          "Resete All entries in [$appName] to default value (entry_generated:0) = false");
     } catch (e) {
-      _loggerService.error('Failed to Clean [$appName] App', e);
+      _loggerService.error("Failed to Clean [$appName] App", e);
     }
   }
 }

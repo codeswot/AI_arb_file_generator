@@ -1,7 +1,7 @@
-import 'dart:io';
+import "dart:io";
 
-import 'package:translation_gen/service/app_setup.dart';
-import 'package:translation_gen/service/files_service.dart';
+import "package:translation_gen/service/app_setup.dart";
+import "package:translation_gen/service/files_service.dart";
 
 setupEntriesWriteToFiles({
   required List<String> keys,
@@ -35,16 +35,16 @@ setupEntriesWriteToFiles({
       //
       try {
         // remove the last "}" in the file
-        final modifiedJsonString = readEnglishFile.endsWith('}')
-            ? '${readEnglishFile.substring(0, readEnglishFile.length - 1)} '
+        final modifiedJsonString = readEnglishFile.endsWith("}")
+            ? "${readEnglishFile.substring(0, readEnglishFile.length - 1)} "
             : readEnglishFile;
 
         await englishFile.writeAsString(modifiedJsonString,
             mode: FileMode.write);
 
         // remove the last "}" in the file
-        final modifiedJsonStringTranslated = readTranslatedFile.endsWith('}')
-            ? '${readTranslatedFile.substring(0, readTranslatedFile.length - 1)} '
+        final modifiedJsonStringTranslated = readTranslatedFile.endsWith("}")
+            ? "${readTranslatedFile.substring(0, readTranslatedFile.length - 1)} "
             : readTranslatedFile;
         await translatedFile.writeAsString(modifiedJsonStringTranslated,
             mode: FileMode.write);
@@ -68,13 +68,13 @@ setupEntriesWriteToFiles({
           await Future.delayed(Duration(milliseconds: 500));
         }
       } catch (e) {
-        print('Error writing to the file: $e');
+        print("Error writing to the file: $e");
       } finally {
         await sinkEnglish.close();
         await sinkTranslated.close();
       }
     } catch (e) {
-      print('Error writing entries to file: $e');
+      print("Error writing entries to file: $e");
     }
   }
 }

@@ -1,9 +1,9 @@
-import 'dart:convert';
-import 'package:translation_gen/data/database.dart';
-import 'package:translation_gen/service/app_setup.dart';
-import 'package:translation_gen/service/files_service.dart';
-import 'package:translation_gen/service/logger_service.dart';
-import 'package:translation_gen/service/open_ai_service.dart';
+import "dart:convert";
+import "package:translation_gen/data/database.dart";
+import "package:translation_gen/service/app_setup.dart";
+import "package:translation_gen/service/files_service.dart";
+import "package:translation_gen/service/logger_service.dart";
+import "package:translation_gen/service/open_ai_service.dart";
 
 class TranslatorApp {
   final LoggerService _loggerService = LoggerService();
@@ -18,15 +18,15 @@ class TranslatorApp {
 
   Future<void> start({
     required List<String> sentences,
-    String translateToLanguage = 'german',
-    String appName = 'app',
+    String translateToLanguage = "german",
+    String appName = "app",
   }) async {
     if (sentences.isEmpty) {
-      print('No sentences found to process');
+      print("No sentences found to process");
       return;
     }
     final language = translateToLanguage.toLowerCase();
-    if (language == 'english') {
+    if (language == "english") {
       _loggerService.info(
           "You cannot translate from English to $language; select another language");
       return;
@@ -40,11 +40,11 @@ class TranslatorApp {
 
     if (languageCode == null) {
       if (_retryCount >= _maxRetries) {
-        print('Max retries reached, exiting');
+        print("Max retries reached, exiting");
         return;
       }
       print(
-          'Setup failed, will retry in 10 seconds, retry count: $_retryCount of $_maxRetries');
+          "Setup failed, will retry in 10 seconds, retry count: $_retryCount of $_maxRetries");
 
       await Future.delayed(Duration(seconds: 10), () async {
         await start(
@@ -53,7 +53,7 @@ class TranslatorApp {
           appName: appName,
         );
         _retryCount += 1;
-        print('Retrying...');
+        print("Retrying...");
       });
 
       return;
@@ -61,12 +61,12 @@ class TranslatorApp {
 
     _retryCount = 0;
 
-    print('Initializing translations for $language:$languageCode...');
+    print("Initializing translations for $language:$languageCode...");
     await _batchTranslationGenerate(appName: appName, language: language);
     await _writeGeneratedEntriesToFile(appName, language);
 
     print(
-        'All Done! Check ${_filesService.workDir}/output/$appName folder for the generated files');
+        "All Done! Check ${_filesService.workDir}/output/$appName folder for the generated files");
   }
 
   Future<void> _batchTranslationGenerate({
@@ -79,15 +79,15 @@ class TranslatorApp {
       final entries = await _appSetupService.appDatabase
           .getAllSentenceEntryWhereNotGeneratedForLang(
             appName,
-            'english', //for now only english
+            "english", //for now only english
             language,
           )
           .get();
       if (entries.isEmpty) {
-        print('No entries found');
+        print("No entries found");
         return;
       }
-      print('Found ${entries.length} entries:$entries');
+      print("Found ${entries.length} entries:$entries");
       for (int i = 0; i < entries.length; i += batchSize) {
         int endIndex =
             (i + batchSize < entries.length) ? i + batchSize : entries.length;
@@ -108,39 +108,39 @@ class TranslatorApp {
             for (int j = 0; j < batchTranslateFromValues.length; j++) {
               final translatedValue =
                   translationData[batchTranslateFromValues[j]] as String? ??
-                      'Translation not available';
+                      "Translation not available";
               // print(
               //     'Translated ${batchTranslateFromValues[j]} to $translatedValue');
-              if (translatedValue != 'Translation not available') {
+              if (translatedValue != "Translation not available") {
                 await _appSetupService.appDatabase
                     .setEntryTranslation(translatedValue, appName, batchIds[j]);
               } else {
                 print(
-                    'failed [${batchTranslateFromValues[j]}] an error occurred: failed to translate to $language');
+                    "failed [${batchTranslateFromValues[j]}] an error occurred: failed to translate to $language");
               }
             }
           }
         } catch (e) {
-          print('failed [${batchTranslateFromValues}] an error occurred: $e');
+          print("failed [${batchTranslateFromValues}] an error occurred: $e");
         }
 
         if (endIndex < entries.length) {
           print(
-              'BATCH INFO START ---------------------------------------------------------- BATCH INFO START');
+              "BATCH INFO START ---------------------------------------------------------- BATCH INFO START");
           print(
-              'Number of items processed: ${i + batchTranslateFromValues.length}/${entries.length}');
+              "Number of items processed: ${i + batchTranslateFromValues.length}/${entries.length}");
           print(
-              'Number of items left: ${entries.length - (i + batchTranslateFromValues.length)}');
+              "Number of items left: ${entries.length - (i + batchTranslateFromValues.length)}");
           print(
-              'Progress: ${((i + batchTranslateFromValues.length) / entries.length * 100).toStringAsFixed(2)}%');
+              "Progress: ${((i + batchTranslateFromValues.length) / entries.length * 100).toStringAsFixed(2)}%");
           print(
-              'BATCH INFO END ---------------------------------------------------------- BATCH INFO END');
-          print('Next batch after $delayInSeconds seconds');
+              "BATCH INFO END ---------------------------------------------------------- BATCH INFO END");
+          print("Next batch after $delayInSeconds seconds");
           await Future.delayed(Duration(seconds: delayInSeconds));
         }
       }
     } catch (e) {
-      print('An error occurred: $e');
+      print("An error occurred: $e");
       // Handle the error or rethrow if needed.
     }
   }
@@ -151,7 +151,7 @@ class TranslatorApp {
     final entries = await _appSetupService.appDatabase
         .getAllSentenceEntryWhereGeneratedForLang(
           appName,
-          'english', //for now only english
+          "english", //for now only english
           language,
         )
         .get();

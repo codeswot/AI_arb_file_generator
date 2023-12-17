@@ -1,13 +1,13 @@
-import 'dart:io';
+import "dart:io";
 
-import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path/path.dart' as p;
-import 'package:riverpod/riverpod.dart';
+import "package:drift/drift.dart";
+import "package:drift/native.dart";
+import "package:path/path.dart" as p;
+import "package:riverpod/riverpod.dart";
 
-part 'database.g.dart';
+part "database.g.dart";
 
-@DriftDatabase(include: {'tables.drift'})
+@DriftDatabase(include: {"tables.drift"})
 class Database extends _$Database {
   // we tell the database where to store the data with this constructor
   Database(Function opener) : super(opener());
@@ -28,7 +28,7 @@ LazyDatabase _openLocalConnection() {
 
     // put the database file, called db.sqlite here, into the documents folder
     // for your app.
-    final file = File(p.join(workDir, 'assets', 'db.sqlite'));
+    final file = File(p.join(workDir, "assets", "db.sqlite"));
 
     return NativeDatabase.createInBackground(file, logStatements: true);
   });
