@@ -110,7 +110,7 @@ class TranslatorApp {
                   translationData[batchTranslateFromValues[j]] as String? ??
                       "Translation not available";
               // print(
-              //     'Translated ${batchTranslateFromValues[j]} to $translatedValue');
+              //     "Translated ${batchTranslateFromValues[j]} to $translatedValue");
               if (translatedValue != "Translation not available") {
                 await _appSetupService.appDatabase
                     .setEntryTranslation(translatedValue, appName, batchIds[j]);
@@ -164,20 +164,23 @@ class TranslatorApp {
         );
       }
     }
+    // temp fix - for now use gobal saved languages
+
     final currentLanguage = await _appSetupService.appDatabase
-        .getAppLanguage(appName, language)
+        .getLanguageFromGlobalIndex(language)
         .getSingleOrNull();
     if (currentLanguage != null) {
-      //
       final englishContentTemplate = {"@@locale": "en", ..._inputData};
       final translatedContentTemplate = {
-        "@@locale": currentLanguage.languageCode,
+        "@@locale": currentLanguage.code,
         ..._translationData
       };
       //
       final englishFile = await _filesService.getFile(appName: appName);
       final translatedFile = await _filesService.getFile(
-          appName: appName, locale: currentLanguage.languageCode);
+        appName: appName,
+        locale: currentLanguage.code,
+      );
       //
       await englishFile.writeAsString(json.encode(englishContentTemplate));
       await translatedFile

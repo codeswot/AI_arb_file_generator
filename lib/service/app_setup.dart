@@ -1,10 +1,6 @@
-import "dart:convert";
-import "dart:io";
-
 import "package:drift/drift.dart";
 import "package:riverpod/riverpod.dart";
 import "package:translation_gen/data/database.dart";
-import "package:translation_gen/service/files_service.dart";
 import "package:translation_gen/service/logger_service.dart";
 import "package:translation_gen/service/open_ai_service.dart";
 import "package:translation_gen/string_extension.dart";
@@ -13,7 +9,6 @@ class AppSetupService {
   late Database appDatabase;
   final LoggerService _loggerService = LoggerService();
   final OpenAiService _openAiService = OpenAiService();
-  final FilesService _filesService = FilesService();
 
   AppSetupService() {
     final container = ProviderContainer();
@@ -28,35 +23,29 @@ class AppSetupService {
     required String language,
     required List<String> entries,
   }) async {
-    _loggerService.info("Setting up App...");
+    print("Setting up App...");
+    final lang = language.toLowerCase();
 
     final app = await appDatabase.getAppByName(appName).getSingleOrNull();
     if (app != null) {
-      await _validateFileAndLangSetups(
-        appName: appName,
-        language: language,
-        entries: entries,
-      );
-      await _setupEntries(entries, appName, language);
+      await _setupEntries(entries, appName, lang);
 
-      final langCode =
-          await _setUpLanguages(appName: appName, language: language);
+      final langCode = await _setUpLanguages(appName: appName, language: lang);
+
       //
       final appGenerated =
           await appDatabase.getAppGenerated(appName).getSingleOrNull();
       if (appGenerated == null) {
-        await _setupFiles(appName: appName);
         await appDatabase.setAppGenerated(appName);
-        _loggerService.info("App Setup Done");
+        print("App Setup Done");
       } else {
-        _loggerService.info("App Already Setup, aborting...");
+        print("App Already Setup, aborting...");
       }
       return langCode;
     } else {
       // creates the app, recall setup();
       await _setUpApp(appName);
-      return await setup(
-          appName: appName, language: language, entries: entries);
+      return await setup(appName: appName, language: lang, entries: entries);
     }
   }
 
@@ -65,7 +54,7 @@ class AppSetupService {
       _loggerService.info("Setting up App...");
       await appDatabase.apps.insertOne(
         App(name: appName, version: 1, appGenerated: 0),
-        mode: InsertMode.insertOrAbort,
+        mode: InsertMode.insertOrIgnore,
       );
     } catch (e) {
       _loggerService.info("App Exist, aborting...\nusing existing App");
@@ -107,13 +96,17 @@ class AppSetupService {
     }
   }
 
-  Future<String> _setUpLanguages(
-      {required String appName, required String language}) async {
+  Future<String> _setUpLanguages({
+    required String appName,
+    required String language,
+  }) async {
     String languageCode = "";
+
     try {
       final globalLanguage = await appDatabase
           .getLanguageFromGlobalIndex(language)
           .getSingleOrNull();
+
       if (globalLanguage == null) {
         final languageCodeRes = await _openAiService.getLanguageCode(language);
         languageCode = languageCodeRes.split("-")[0].trim().replaceAll(" ", "");
@@ -123,108 +116,35 @@ class AppSetupService {
           GlobalLanguage(language: language, code: languageCode),
           mode: InsertMode.insertOrIgnore,
         );
-        _loggerService
-            .info("Added new language [$language] to global languages");
-        final app = await appDatabase.getAppByName(appName).getSingleOrNull();
-        if (app != null) {
-          await appDatabase.appLanguages.insertOne(
-            AppLanguage(
-              appName: appName,
-              language: language,
-              languageCode: languageCode,
-            ),
-            mode: InsertMode.insertOrIgnore,
-          );
-          _loggerService.info("Added new language [$language] to App $appName");
-        }
+        print("Added new language [$language] to global languages");
+
+        await appDatabase.appLanguages.insertOne(
+          AppLanguage(
+            appName: appName,
+            language: language,
+            languageCode: languageCode,
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+        print("Added new language [$language] to App $appName");
       } else {
-        final app = await appDatabase.getAppByName(appName).getSingleOrNull();
-        if (app != null) {
-          await appDatabase.appLanguages.insertOne(
-            AppLanguage(
-              appName: appName,
-              language: language,
-              languageCode: globalLanguage.code,
-            ),
-            mode: InsertMode.insertOrIgnore,
-          );
-          _loggerService.info("Added new language [$language] to App $appName");
-        }
+        await appDatabase.appLanguages.insertOne(
+          AppLanguage(
+            appName: appName,
+            language: globalLanguage.language,
+            languageCode: globalLanguage.code,
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+        print(
+            "Added new language [$language] to App $appName found from global");
       }
+
       return languageCode.isNotEmpty
           ? languageCode
           : globalLanguage?.code ?? languageCode;
     } catch (e) {
-      _loggerService.error("Failed to setup languages", e);
-      rethrow;
-    }
-  }
-
-  _validateFileAndLangSetups(
-      {required String appName,
-      required String language,
-      required List<String> entries}) async {
-    final appLanguage =
-        await appDatabase.getAppLanguage(appName, language).getSingleOrNull();
-    if (appLanguage != null) {
-      //app language exists in DB so check if files exist and is valid formart (en, $language)
-      final isEnglishFileSet =
-          await _filesService.validateFile(appName: appName);
-      final isTranslatedFilSet = await _filesService.validateFile(
-          appName: appName, locale: appLanguage.languageCode);
-      if (!isTranslatedFilSet || !isEnglishFileSet) {
-        // files are not valid  unset app
-        await appDatabase.unsetAppGenerated(appName);
-        await _setupFiles(appName: appName);
-        await setup(appName: appName, language: language, entries: entries);
-      }
-    } else {
-      // app language does not exist in DB so unset app
-      await appDatabase.unsetAppGenerated(appName);
-      await _setUpLanguages(appName: appName, language: language);
-      await _setupFiles(appName: appName);
-      await setup(appName: appName, language: language, entries: entries);
-    }
-  }
-
-  _setupFiles({required String appName}) async {
-    try {
-      final appLanguages =
-          await appDatabase.getLanguagesByAppName(appName).get();
-      final isEnglishFileSet =
-          await _filesService.validateFile(appName: appName);
-      if (!isEnglishFileSet) {
-        final String englishFilePath =
-            _filesService.createFileIfNotExists(appName: appName);
-        await _setupFile(filePath: englishFilePath, locale: "en");
-      }
-
-      for (var appLanguage in appLanguages) {
-        final isTranslationFilesSet = await _filesService.validateFile(
-          appName: appName,
-          locale: appLanguage.languageCode,
-        );
-        if (!isTranslationFilesSet) {
-          final String translatedFilePath = _filesService.createFileIfNotExists(
-            appName: appName,
-            locale: appLanguage.languageCode,
-          );
-          await _setupFile(
-              filePath: translatedFilePath, locale: appLanguage.languageCode);
-          print("settig up ${appLanguage.languageCode} file");
-        }
-      }
-    } catch (e, t) {
-      _loggerService.error(e, e, t);
-    }
-  }
-
-  _setupFile({required String filePath, String locale = "en"}) async {
-    try {
-      final File file = File(filePath);
-      final valueTemplate = {"@@locale": locale};
-      await file.writeAsString(json.encode(valueTemplate));
-    } catch (e) {
+      print("Failed to set up languages: $e");
       rethrow;
     }
   }

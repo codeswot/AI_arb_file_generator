@@ -36,15 +36,9 @@ class FilesService {
   }
 
   Future<File> getFile({String appName = "app", String locale = "en"}) async {
-    final baseDirPath = "$workDir/outputs";
-    final appDirPath = "$baseDirPath/$appName";
-    File file = File("$appDirPath/app_$locale.arb");
-
-    final isFileExist = await file.exists();
-    if (isFileExist) {
-      return file;
-    }
-    file = File(createFileIfNotExists(appName: appName, locale: locale));
+    String filePath = createFileIfNotExists(appName: appName, locale: locale);
+    File file = File(filePath);
+    print('E d ${file.path}');
     return file;
   }
 
