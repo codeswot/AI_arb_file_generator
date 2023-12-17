@@ -1,0 +1,69 @@
+CREATE TABLE globalLanguages (
+   id int PRIMARY KEY AUTOINCREMENT,
+   language TEXT NOT NULL UNIQUE,
+   code TEXT NOT NULL UNIQUE
+) as GlobalLanguage;
+
+
+CREATE TABLE apps (
+   id int PRIMARY KEY AUTOINCREMENT,
+   name TEXT NOT NULL UNIQUE,
+   version int DEFAULT 1,
+   app_generated int DEFAULT 0
+) as App; 
+
+CREATE TABLE appLanguages (
+   id int PRIMARY KEY AUTOINCREMENT,
+   app_name TEXT NOT NULL REFERENCES apps(name),
+   language TEXT NOT NULL UNIQUE REFERENCES globalLanguages(language),
+   language_code TEXT NOT NULL UNIQUE REFERENCES globalLanguages(code)
+) as AppLanguage;
+
+
+CREATE TABLE entries (
+   id int PRIMARY KEY AUTOINCREMENT,
+  app_name TEXT NOT NULL REFERENCES apps(name),
+  entry_id TEXT NOT NULL UNIQUE,
+  entry_key TEXT NOT NULL,
+  entry_translation_from TEXT NOT NULL,
+  entry_translation_to TEXT,
+  entry_language_from TEXT NOT NULL REFERENCES appLanguages(language),
+  entry_language_to TEXT NOT NULL REFERENCES appLanguages(language),
+
+  entry_generated INTEGER DEFAULT 0
+) as SentenceEntry;
+
+
+getAppById: SELECT * FROM apps WHERE id = ?;
+getAppByName: SELECT * FROM apps WHERE name = ?;
+
+getSentenceEntriesByAppName: SELECT * FROM entries WHERE app_name = ?;
+
+checkIsSentenceEntryExist: SELECT * FROM entries WHERE app_name = ? AND entry_key =?;
+
+setSentenceEntryGenerated: UPDATE entries SET entry_generated =1 WHERE entry_id =?;
+unsetSentenceEntryGenerated: UPDATE entries SET entry_generated =0 WHERE entry_id =?;
+
+setEntryTranslation: UPDATE entries SET entry_translation_to = ?, entry_generated = 1 WHERE app_name =? AND entry_id=? ;
+
+getAllSentenceEntryWhereNotGenerated: SELECT * FROM entries WHERE app_name =? AND entry_generated = 0;
+getAllSentenceEntryWhereGenerated: SELECT * FROM entries WHERE app_name =? AND entry_generated = 1;
+
+getAllSentenceEntryWhereNotGeneratedForLang: SELECT * FROM entries WHERE app_name =? AND entry_generated = 0 AND entry_language_from =? AND entry_language_to=?;
+getAllSentenceEntryWhereGeneratedForLang: SELECT * FROM entries WHERE app_name =? AND entry_generated = 1 AND entry_language_from =? AND entry_language_to=?;
+
+resetAppSentenceEntries: UPDATE entries SET entry_generated =0 WHERE app_name =?;
+unsetAppGenerated: UPDATE apps SET app_generated = 0 WHERE name =?;
+setAppGenerated: UPDATE apps SET app_generated = 1 WHERE name =?;
+getAppGenerated: SELECT * FROM apps WHERE app_generated = 1 AND name =?;
+
+cleanAppEntries: DELETE FROM entries WHERE app_name =?;
+cleanAppLanguages: DELETE FROM appLanguages WHERE app_name =?;
+
+globalIndexNewLanguage: INSERT INTO globalLanguages (language, code) VALUES (?,?);
+addLangaugeToApp: INSERT INTO appLanguages (app_name, language,language_code) VALUES (?,?,?);
+getLanguageFromGlobalIndex: SELECT * FROM globalLanguages WHERE language =?;
+getLanguagesByAppName: SELECT * FROM appLanguages WHERE app_name =?;
+getAppLanguage: SELECT * FROM appLanguages WHERE app_name =? AND language =?;
+
+
