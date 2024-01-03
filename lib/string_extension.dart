@@ -18,5 +18,4 @@ extension StringExtension on String {
     // we dont want the key to be too long, so we truncate it to 100 chars
     return str.length <= 100 ? str : str.substring(0, 100);
   }
-  
 }
