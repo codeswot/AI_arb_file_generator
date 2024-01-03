@@ -1,1 +1,0 @@
-dart run --define=OPENAI_TOKEN='sk-JJ'
